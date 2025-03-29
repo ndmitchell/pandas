@@ -24,6 +24,7 @@ import sys
 from typing import (
     IO,
     TYPE_CHECKING,
+    Any,
     AnyStr,
     Final,
     cast,
@@ -648,6 +649,13 @@ class StataValueLabel:
         Encoding to use for value labels.
     """
 
+    text_len: int
+    n: int
+    txt: list[bytes]
+    off: Any
+    val: Any
+    len: int
+
     def __init__(
         self, catarray: Series, encoding: Literal["latin-1", "utf-8"] = "latin-1"
     ) -> None:
@@ -664,7 +672,7 @@ class StataValueLabel:
         """Encode value labels."""
 
         self.text_len = 0
-        self.txt: list[bytes] = []
+        self.txt = []
         self.n = 0
         # Offsets (length of categories), converted to int32
         self.off = np.array([], dtype=np.int32)
@@ -1092,6 +1100,32 @@ class StataReader(StataParser, abc.Iterator):
     __doc__ = _stata_reader_doc
 
     _path_or_buf: IO[bytes]  # Will be assigned by `_open_file`.
+    GSO: dict[str, str] # Will be assigned by `_read_strls`
+
+    # Set by _read_new_header or _read_old_header
+    _format_version: int
+    _byteorder: Literal["<", ">"]
+    _nvar: int
+    _nobs: int
+    _data_label: str
+    _time_stamp: str
+    _seek_vartypes: int
+    _seek_varnames: int
+    _seek_sortlist: int
+    _seek_formats: int
+    _seek_value_label_names: int
+    _seek_variable_labels: int
+    _data_location: int
+    _seek_strls: int
+    _seek_value_labels: int
+    _typlist: list[int | str]
+    _dtyplist: Any
+    _varlist: list[str]
+    _srtlist: int
+    _fmtlist: list[str]
+    _lbllist: list[str]
+    _variable_labels: list[str]
+    _filetype: int
 
     def __init__(
         self,
@@ -2384,6 +2418,12 @@ class StataWriter(StataParser):
 
     _max_string_length = 244
     _encoding: Literal["latin-1", "utf-8"] = "latin-1"
+    handles: Any
+    fmtlist: list[str]
+    typlist: list[str]
+    nobs: int
+    nvar: int
+    varlist: list[Any]
 
     def __init__(
         self,
@@ -2634,8 +2674,8 @@ class StataWriter(StataParser):
         return data
 
     def _set_formats_and_types(self, dtypes: Series) -> None:
-        self.fmtlist: list[str] = []
-        self.typlist: list[int] = []
+        self.fmtlist = []
+        self.typlist = []
         for col, dtype in dtypes.items():
             self.fmtlist.append(_dtype_to_default_stata_fmt(dtype, self.data[col]))
             self.typlist.append(_dtype_to_stata_type(dtype, self.data[col]))
